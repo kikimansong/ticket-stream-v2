@@ -1,0 +1,8 @@
+rootProject.name = 'ticket-stream-v2'
+
+include 'common'
+include 'services:waiting-service'
+include 'services:concert-service'
+include 'services:seat-service'
+include 'services:order-service'
+include 'services:payment-service'
