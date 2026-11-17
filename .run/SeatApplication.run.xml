@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SeatApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="ticket-stream-v2.services.seat-service.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.ticketstream.seat.SeatApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

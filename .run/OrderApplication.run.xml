@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OrderApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="ticket-stream-v2.services.order-service.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.ticketstream.order.OrderApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
