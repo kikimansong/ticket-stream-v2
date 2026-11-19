@@ -24,7 +24,7 @@ export default function ConcertCarousel({
             🎵 콘서트 목록
           </h2>
           <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800">
-            GET /api/v1/concerts
+            GET /api/v2/concerts
           </span>
         </div>
         <span className="text-xs text-slate-400">

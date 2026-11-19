@@ -29,7 +29,7 @@ export const options = {
   },
 };
 
-const SEAT_SERVICE_URL = __ENV.SEAT_API_URL || 'http://localhost:8083/api/v1';
+const SEAT_SERVICE_URL = __ENV.SEAT_API_URL || 'http://localhost:8080/api/v2';
 const CONCERT_ID = 1;
 const TARGET_SEAT_ID = 1;
 

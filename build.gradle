@@ -1,111 +1,57 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.4' apply false
-    id 'io.spring.dependency-management' version '1.1.6' apply false
+    id 'org.springframework.boot' version '3.3.4'
+    id 'io.spring.dependency-management' version '1.1.6'
 }
 
-allprojects {
-    group = 'com.ticketstream'
-    version = '0.0.1-SNAPSHOT'
+group = 'com.ticketstream'
+version = '0.0.1-SNAPSHOT'
 
-    repositories {
-        mavenCentral()
-    }
-}
-
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'io.spring.dependency-management'
-
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
-        }
-    }
-
-    dependencyManagement {
-        imports {
-            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
-        }
-    }
-
-    configurations {
-        compileOnly {
-            extendsFrom annotationProcessor
-        }
-    }
-
-    dependencies {
-        compileOnly 'org.projectlombok:lombok'
-        annotationProcessor 'org.projectlombok:lombok'
-        testCompileOnly 'org.projectlombok:lombok'
-        testAnnotationProcessor 'org.projectlombok:lombok'
-
-        testImplementation 'org.springframework.boot:spring-boot-starter-test'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
-
-    tasks.named('test') {
-        useJUnitPlatform()
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
-project(':common') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-validation'
-        implementation 'com.fasterxml.jackson.core:jackson-databind'
-        implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
     }
 }
 
-configure(subprojects.findAll { it.name != 'common' }) {
-    apply plugin: 'org.springframework.boot'
+dependencies {
+    // Spring Boot Starter
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    dependencies {
-        implementation project(':common')
-        implementation 'org.springframework.boot:spring-boot-starter-web'
-        implementation 'org.springframework.boot:spring-boot-starter-validation'
-    }
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Database
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-project(':services:waiting-service') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    }
-}
-
-project(':services:concert-service') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        runtimeOnly 'com.h2database:h2'
-        runtimeOnly 'org.postgresql:postgresql'
-    }
-}
-
-project(':services:seat-service') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        implementation 'org.springframework.kafka:spring-kafka'
-        implementation 'org.redisson:redisson-spring-boot-starter:3.34.1'
-        runtimeOnly 'com.h2database:h2'
-        runtimeOnly 'org.postgresql:postgresql'
-    }
-}
-
-project(':services:order-service') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        implementation 'org.springframework.kafka:spring-kafka'
-        runtimeOnly 'com.h2database:h2'
-        runtimeOnly 'org.postgresql:postgresql'
-    }
-}
-
-project(':services:payment-service') {
-    dependencies {
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        implementation 'org.springframework.kafka:spring-kafka'
-        runtimeOnly 'com.h2database:h2'
-        runtimeOnly 'org.postgresql:postgresql'
-    }
+tasks.named('test') {
+    useJUnitPlatform()
 }

@@ -37,7 +37,7 @@ k6 version
 ## 3. k6 실행 방법
 
 ### 3.1 [시나리오 1] Redisson 분산 락 선점 테스트 (30명 동시 요청)
-단 1개의 좌석(ID: 1)에 30명이 동시에 임시 선점(`POST /api/v1/seats/reserve`)을 시도합니다.
+단 1개의 좌석(ID: 1)에 30명이 동시에 임시 선점(`POST /api/v2/seats/reserve`)을 시도합니다.
 
 ```powershell
 k6 run k6/seat-distributed-lock-test.js

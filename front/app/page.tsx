@@ -14,12 +14,12 @@ import {
   TestLog,
 } from '../types';
 
-// MSA 서비스별 베이스 URL
-const QUEUE_URL = 'http://localhost:8081/api/v1';
-const CONCERT_URL = 'http://localhost:8082/api/v1';
-const SEAT_URL = 'http://localhost:8083/api/v1';
-const ORDER_URL = 'http://localhost:8084/api/v1';
-const PAYMENT_URL = 'http://localhost:8085/api/v1';
+// 백엔드 API 베이스 URL (Port 8080, v2 모놀리식)
+const QUEUE_URL = 'http://localhost:8080/api/v2';
+const CONCERT_URL = 'http://localhost:8080/api/v2';
+const SEAT_URL = 'http://localhost:8080/api/v2';
+const ORDER_URL = 'http://localhost:8080/api/v2';
+const PAYMENT_URL = 'http://localhost:8080/api/v2';
 
 export default function Home() {
   const [concerts, setConcerts] = useState<Concert[]>([]);
@@ -272,17 +272,14 @@ export default function Home() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            대기열 큐(Redis ZSet) $\rightarrow$ 좌석 선점(Redisson 분산 락) $\rightarrow$ 결제 및 Saga 이벤트 스트리밍
+            대기열 큐(Redis ZSet) &rarr; 좌석 선점 &rarr; 결제 및 Kafka 이벤트 스트리밍
           </p>
         </div>
 
         {/* 서비스 상태 뱃지 */}
         <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
-          <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">queue: 8081</span>
-          <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">concert: 8082</span>
-          <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">seat: 8083</span>
-          <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">order: 8084</span>
-          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">payment: 8085</span>
+          <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">backend: 8080 (v2)</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">kafka-ui: 8085</span>
         </div>
       </header>
 

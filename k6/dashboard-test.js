@@ -11,8 +11,8 @@ export const options = {
   },
 };
 
-const QUEUE_URL = 'http://localhost:8081/api/v1/queue';
-const SEAT_URL = 'http://localhost:8083/api/v1/seats';
+const QUEUE_URL = 'http://localhost:8080/api/v2/queue';
+const SEAT_URL = 'http://localhost:8080/api/v2/seats';
 
 export default function () {
   // 1. 좌석 목록 실시간 조회

@@ -24,7 +24,7 @@ export const options = {
   },
 };
 
-const QUEUE_SERVICE_URL = __ENV.QUEUE_API_URL || 'http://localhost:8081/api/v1';
+const QUEUE_SERVICE_URL = __ENV.QUEUE_API_URL || 'http://localhost:8080/api/v2';
 const CONCERT_ID = 1;
 
 export default function () {
