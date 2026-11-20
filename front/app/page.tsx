@@ -113,7 +113,7 @@ export default function Home() {
     if (!selectedConcertId) return;
     const userId = 1001;
 
-    addLog('QUEUE', `대기열 진입 요청 (POST :8081/queue/tokens)`, 'waiting-service');
+    addLog('QUEUE', `대기열 진입 요청 (POST /api/v2/queue/tokens)`, 'queue-service');
     try {
       const res = await fetch(`${QUEUE_URL}/queue/tokens`, {
         method: 'POST',
@@ -124,12 +124,12 @@ export default function Home() {
       if (res.ok) {
         setQueueStatus(json.data);
         setQueueToken(json.data.token);
-        addLog('QUEUE', `대기열 등록 완료 (내 순번: ${json.data.rank}번 / 총 ${json.data.totalWaiting}명)`, 'waiting-service');
+        addLog('QUEUE', `대기열 등록 완료 (내 순번: ${json.data.rank}번 / 총 ${json.data.totalWaiting}명)`, 'queue-service');
       } else {
-        addLog('ERROR', `대기열 진입 실패: ${json.message}`, 'waiting-service');
+        addLog('ERROR', `대기열 진입 실패: ${json.message}`, 'queue-service');
       }
     } catch (e: any) {
-      addLog('ERROR', `waiting-service (Port 8081) 연결 실패: ${e.message}`, 'waiting-service');
+      addLog('ERROR', `queue-service (Port 8080) 연결 실패: ${e.message}`, 'queue-service');
     }
   };
 
@@ -169,7 +169,7 @@ export default function Home() {
     const startTime = performance.now();
     const userId = 1001;
 
-    addLog('INFO', `[Redisson 분산 락] 좌석 선점 시도: seatId=${selectedSeat.id} (${selectedSeat.seatNumber})`, 'seat-service');
+    addLog('INFO', `좌석 선점 시도: seatId=${selectedSeat.id} (${selectedSeat.seatNumber})`, 'seat-service');
 
     try {
       const res = await fetch(`${SEAT_URL}/seats/reserve`, {
@@ -335,7 +335,7 @@ export default function Home() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">선점 전략:</span>
-                <span className="text-cyan-400">Redisson 분산 락 (Fast-Fail)</span>
+                <span className="text-cyan-400">Kafka 이벤트 스트리밍</span>
               </div>
             </div>
 

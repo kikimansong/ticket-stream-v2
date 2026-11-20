@@ -31,10 +31,10 @@ export default function StadiumSeatMap({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold text-slate-200">
-              🏟️ 공연장 좌석 배치도 (Redisson 분산 락)
+              🏟️ 공연장 좌석 배치도 (Kafka 스트리밍)
             </h2>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
-              seat-service [Port 8083]
+              Backend [Port 8080]
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -78,7 +78,7 @@ export default function StadiumSeatMap({
       {isLoading || seats.length === 0 ? (
         <div className="flex-1 border border-slate-800/80 rounded p-2 bg-slate-950/50 flex flex-col justify-center">
           <div className="text-center py-2 text-xs text-slate-400 font-mono animate-pulse mb-2">
-            📡 seat-service (Port 8083) 좌석 데이터를 조회하고 있습니다...
+            📡 백엔드 (Port 8080) 좌석 데이터를 조회하고 있습니다...
           </div>
           <div className="grid grid-cols-10 sm:grid-cols-20 md:grid-cols-25 gap-1.5 overflow-hidden opacity-60">
             {Array.from({ length: 100 }).map((_, i) => (

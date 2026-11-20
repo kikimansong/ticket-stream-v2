@@ -40,7 +40,7 @@ export function setup() {
   check(resetRes, {
     'setup: seats reset successfully': (r) => r.status === 200,
   });
-  console.log(`[k6 Setup] 좌석 초기화 완료! Redisson 분산 락 선점 테스트 시작 (${VUS}명 동시 경합)`);
+  console.log(`[k6 Setup] 좌석 초기화 완료! 동시 선점 테스트 시작 (${VUS}명 동시 경합)`);
   console.log(`======================================================\n`);
 }
 

@@ -12,11 +12,8 @@
 # 1. 인프라 컨테이너 구동 (PostgreSQL, Redis, Kafka)
 docker-compose up -d
 
-# 2. 백엔드 서비스 구동 (각 터미널별)
-.\gradlew.bat :services:waiting-service:bootRun
-.\gradlew.bat :services:seat-service:bootRun
-.\gradlew.bat :services:order-service:bootRun
-.\gradlew.bat :services:payment-service:bootRun
+# 2. 백엔드 서비스 구동 (단일 모놀리식 Port 8080)
+.\gradlew.bat bootRun
 
 # 3. k6 설치 확인
 k6 version
@@ -28,9 +25,9 @@ k6 version
 
 | 시나리오 | 동시 요청 (VUs) | 대상 서비스 | 핵심 검증 목표 | 기대 결과 |
 | :--- | :---: | :--- | :--- | :--- |
-| **1. Redisson 분산 락 선점 검증** | **30 ~ 100명** | `seat-service` (Port 8083) | 단일 좌석 동시 선점 시 1등만 200 OK, 나머지는 409 Conflict로 즉시 차단 (Fast-Fail) | • 200 OK: **1건**<br/>• 409 Conflict: **`VUs - 1`건**<br/>• 500 에러: **0건 (타임아웃 없음)** |
-| **2. 대기열 트래픽 흡수 검증** | **200명 Ramping** | `waiting-service` (Port 8081) | Redis ZSet 메모리 기반으로 수만 RPS 대기열 등록 및 순번 폴링 처리 | • 응답 시간: **95%가 100ms 이내**<br/>• 에러율: **0%** |
-| **3. 실시간 대시보드 모니터링** | **20명 지속** | 전체 서비스 | 웹 브라우저에서 실시간 RPS 및 응답 지연 시간 그래프 관찰 | • 20초간 안정적인 트래픽 처리 확인 |
+| **1. 좌석 동시 선점 충돌 검증** | **30 ~ 100명** | `단일 백엔드` (Port 8080) | 단일 좌석 동시 선점 시 1등만 200 OK, 나머지는 409 Conflict로 즉시 차단 (Fast-Fail) | • 200 OK: **1건**<br/>• 409 Conflict: **`VUs - 1`건**<br/>• 500 에러: **0건 (타임아웃 없음)** |
+| **2. 대기열 트래픽 흡수 검증** | **200명 Ramping** | `대기열` (Port 8080) | Redis ZSet 메모리 기반으로 수만 RPS 대기열 등록 및 순번 폴링 처리 | • 응답 시간: **95%가 100ms 이내**<br/>• 에러율: **0%** |
+| **3. 실시간 대시보드 모니터링** | **20명 지속** | `전체 API` (Port 8080) | 실시간 동시 좌석 조회 및 대기열 등록 시 부하 테스트 | • 20초간 안정적인 트래픽 처리 확인 |
 
 ---
 

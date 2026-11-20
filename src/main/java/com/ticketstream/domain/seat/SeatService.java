@@ -48,4 +48,9 @@ public class SeatService {
         return SeatResponse.ReserveResult.of(seat, request.getUserId());
     }
 
+    @Transactional
+    public void resetSeats(Long concertId) {
+        log.info("[SeatService] 공연 ID {} 좌석 전체 초기화 (AVAILABLE)", concertId);
+        seatRepository.resetSeatsByConcertId(concertId);
+    }
 }

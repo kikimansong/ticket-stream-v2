@@ -22,7 +22,7 @@ export default function QueueModal({ queueStatus, onCancel }: QueueModalProps) {
         {/* 헤더 배지 */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-indigo-950 text-indigo-400 border border-indigo-800 mb-4">
           <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-          waiting-service [Port 8081]
+          Redis Queue [Port 8080]
         </div>
 
         {isAllowed ? (

@@ -27,4 +27,9 @@ public class SeatController {
         return ResponseEntity.ok(ApiResponse.ok("좌석 선점 성공", response));
     }
 
+    @PostMapping("/reset/{concertId}")
+    public ResponseEntity<ApiResponse<String>> resetSeats(@PathVariable Long concertId) {
+        seatService.resetSeats(concertId);
+        return ResponseEntity.ok(ApiResponse.ok("공연 좌석 상태가 초기화되었습니다.", "RESET_SUCCESS"));
+    }
 }

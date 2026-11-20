@@ -2,7 +2,8 @@
 
 **Ticket Stream v2**는 v1의 단일 모놀리식 구조의 단순성과 생산성을 유지하면서, 대규모 트래픽 처리를 위해 **Redis(대기열 유량 제어)**와 **Apache Kafka(이벤트 스트리밍)**를 도입한 **이벤트 주도 모놀리식(Event-Driven Monolith) 티켓 예매 시스템**입니다.
 
-> 📖 **단계별 개발 로드맵**: [docs/implementation-roadmap.md](file:///d:/Projects/ticket-stream-v2/docs/implementation-roadmap.md)에서 1단계부터 5단계까지의 점진적 구현 계획을 확인하실 수 있습니다.
+> 📖 **단계별 개발 로드맵**: [docs/implementation-roadmap.md](file:///d:/Projects/ticket-stream-v2/docs/implementation-roadmap.md)에서 1단계부터 5단계까지의 점진적 구현 계획을 확인하실 수 있습니다.  
+> 📊 **카프카 도입 전/후 비교 분석**: [docs/kafka-before-after.md](file:///d:/Projects/ticket-stream-v2/docs/kafka-before-after.md)에서 v1 동기식 구조 대비 v2 카프카 도입 시의 이점 및 아키텍처 비교를 확인하실 수 있습니다.
 
 ---
 
