@@ -54,7 +54,10 @@ export default function () {
   });
 
   const params = {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Queue-Token': 'TEST_TOKEN',
+    },
   };
 
   const res = http.post(`${SEAT_SERVICE_URL}/seats/reserve`, payload, params);

@@ -10,6 +10,8 @@ interface StadiumSeatMapProps {
   onSelectSeat: (seat: Seat) => void;
   onResetSeats?: () => void;
   isLoading: boolean;
+  isQueuePassed?: boolean;
+  onEnterQueue?: () => void;
 }
 
 export default function StadiumSeatMap({
@@ -19,6 +21,8 @@ export default function StadiumSeatMap({
   onSelectSeat,
   onResetSeats,
   isLoading,
+  isQueuePassed = true,
+  onEnterQueue,
 }: StadiumSeatMapProps) {
   const availableCount = seats.filter((s) => s.status === 'AVAILABLE').length;
   const reservedCount = seats.filter((s) => s.status === 'RESERVED').length;
@@ -38,7 +42,11 @@ export default function StadiumSeatMap({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            {isLoading ? '실시간 좌석 상태를 동기화하는 중...' : `총 ${seats.length}석 중 예매 가능 ${availableCount}석`}
+            {!isQueuePassed
+              ? '🔒 대기열을 통과해야 실시간 좌석을 확인하고 예매할 수 있습니다.'
+              : isLoading
+              ? '실시간 좌석 상태를 동기화하는 중...'
+              : `총 ${seats.length}석 중 예매 가능 ${availableCount}석`}
           </p>
         </div>
 
@@ -46,22 +54,22 @@ export default function StadiumSeatMap({
         <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
-            <span className="text-slate-300">선점가능 ({availableCount})</span>
+            <span className="text-slate-300">선점가능 ({isQueuePassed ? availableCount : '-'})</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-amber-500"></span>
-            <span className="text-slate-300">선점중/5분홀드 ({reservedCount})</span>
+            <span className="text-slate-300">선점중/5분홀드 ({isQueuePassed ? reservedCount : '-'})</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-rose-600"></span>
-            <span className="text-slate-300">판매완료 ({soldCount})</span>
+            <span className="text-slate-300">판매완료 ({isQueuePassed ? soldCount : '-'})</span>
           </div>
 
-          {onResetSeats && (
+          {onResetSeats && isQueuePassed && (
             <button
               onClick={onResetSeats}
-              title="좌석 상태를 AVAILABLE로 초기화합니다"
-              className="px-2.5 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-600/80 rounded text-xs font-sans font-medium transition flex items-center gap-1"
+              title="동시성 테스트를 위해 모든 좌석을 AVAILABLE로 리셋합니다."
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs border border-slate-700 transition flex items-center gap-1 ml-1"
             >
               <span>🧹 좌석 초기화</span>
             </button>
@@ -74,8 +82,29 @@ export default function StadiumSeatMap({
         [ STAGE / STADIUM CENTER ]
       </div>
 
-      {/* 좌석 그리드 */}
-      {isLoading || seats.length === 0 ? (
+      {/* 미통과 상태: 대기열 진입 유도 카드 */}
+      {!isQueuePassed ? (
+        <div className="flex-1 min-h-[320px] border border-slate-800/80 rounded-lg p-8 bg-slate-950/70 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-3xl mb-4 shadow-inner">
+            🔒
+          </div>
+          <h3 className="text-base font-bold text-slate-100 mb-1">
+            대기열 통과 후 좌석 선택이 가능합니다
+          </h3>
+          <p className="text-xs text-slate-400 mb-6 max-w-sm leading-relaxed">
+            트래픽 폭주 방지 및 공정한 예매를 위해 순서대로 대기열을 통과한 사용자에게만 실시간 좌석 배치도가 공개됩니다.
+          </p>
+          {onEnterQueue && (
+            <button
+              onClick={onEnterQueue}
+              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold rounded-lg text-sm transition shadow-lg shadow-indigo-950 flex items-center gap-2 transform active:scale-95 cursor-pointer"
+            >
+              <span>🎟️</span>
+              <span>티켓 예매하기 (대기열 표 뽑기)</span>
+            </button>
+          )}
+        </div>
+      ) : isLoading || seats.length === 0 ? (
         <div className="flex-1 border border-slate-800/80 rounded p-2 bg-slate-950/50 flex flex-col justify-center">
           <div className="text-center py-2 text-xs text-slate-400 font-mono animate-pulse mb-2">
             📡 백엔드 (Port 8080) 좌석 데이터를 조회하고 있습니다...

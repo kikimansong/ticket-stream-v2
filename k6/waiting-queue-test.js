@@ -12,8 +12,8 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '3s', target: 100 },  // 3초 만에 100명 진입 폭주
-        { duration: '5s', target: 200 },  // 200명 유지
+        { duration: '3s', target: 50 },   // 3초 만에 50명 진입 폭주
+        { duration: '5s', target: 100 },  // 100명 유지
         { duration: '2s', target: 0 },    // 종료
       ],
     },

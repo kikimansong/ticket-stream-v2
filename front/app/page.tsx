@@ -18,19 +18,19 @@ import {
 const QUEUE_URL = 'http://localhost:8080/api/v2';
 const CONCERT_URL = 'http://localhost:8080/api/v2';
 const SEAT_URL = 'http://localhost:8080/api/v2';
-const ORDER_URL = 'http://localhost:8080/api/v2';
 const PAYMENT_URL = 'http://localhost:8080/api/v2';
 
 export default function Home() {
   const [concerts, setConcerts] = useState<Concert[]>([]);
-  const [selectedConcertId, setSelectedConcertId] = useState<number | null>(1);
+  const [selectedConcertId, setSelectedConcertId] = useState<number | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
+  const [isLoadingConcerts, setIsLoadingConcerts] = useState<boolean>(false);
   const [isLoadingSeats, setIsLoadingSeats] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // 대기열 상태
+  // 대기열 상태 (대기열 통과 전에는 seats 조회 불가)
   const [queueStatus, setQueueStatus] = useState<QueueTokenResponse | null>(null);
   const [queueToken, setQueueToken] = useState<string | null>(null);
 
@@ -57,63 +57,85 @@ export default function Home() {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  // 1. 공연 목록 로드 (concert-service: 8082)
+  // 1. 공연 목록 로드
   useEffect(() => {
     fetchConcerts();
   }, []);
 
   const fetchConcerts = async () => {
+    setIsLoadingConcerts(true);
     try {
       const res = await fetch(`${CONCERT_URL}/concerts`);
       if (res.ok) {
         const json: ApiResponse<Concert[]> = await res.json();
-        setConcerts(json.data);
-        if (json.data.length > 0 && !selectedConcertId) {
+        setConcerts(json.data || []);
+        if (json.data && json.data.length > 0) {
           setSelectedConcertId(json.data[0].id);
+        } else {
+          setSelectedConcertId(null);
         }
+      } else {
+        setConcerts([]);
+        setSelectedConcertId(null);
+        addLog('ERROR', `공연 목록 조회 실패 (${res.status}): DB 상태를 확인하세요.`, 'concert-service');
       }
-    } catch {
-      // 기본 콘서트 목업
-      setConcerts([
-        {
-          id: 1,
-          title: '2026 WORLD TOUR FINALE IN SEOUL',
-          venue: '올림픽공원 KSPO DOME',
-          concertDate: '2026-12-25T19:00:00',
-          totalSeats: 500,
-        },
-      ]);
+    } catch (e: any) {
+      setConcerts([]);
+      setSelectedConcertId(null);
+      addLog('ERROR', `concert-service 연결 실패 (Port 8080 확인 필요): ${e.message}`, 'concert-service');
+    } finally {
+      setIsLoadingConcerts(false);
     }
   };
 
-  // 2. 좌석 목록 로드 (seat-service: 8083)
-  const fetchSeats = async (concertId: number) => {
+  // 공연 변경 핸들러 (공연 변경 시 대기열 토큰 및 좌석 정보 초기화)
+  const handleSelectConcert = (id: number) => {
+    setSelectedConcertId(id);
+    setSeats([]);
+    setSelectedSeat(null);
+    setReservedSeatInfo(null);
+    setQueueToken(null);
+    setQueueStatus(null);
+    addLog('INFO', `공연 ID ${id} 선택됨 -> 대기열 진입 후 좌석 조회가 가능합니다.`, 'concert-service');
+  };
+
+  // 2. 좌석 목록 로드 (X-Queue-Token 헤더 필수 검증)
+  const fetchSeats = async (concertId: number, token?: string) => {
+    const activeToken = token || queueToken;
+    if (!activeToken) {
+      addLog('ERROR', '대기열 활성 토큰이 없어 좌석을 조회할 수 없습니다. 대기열에 먼저 진입하세요.', 'seat-service');
+      return;
+    }
+
     setIsLoadingSeats(true);
     try {
-      const res = await fetch(`${SEAT_URL}/seats?concertId=${concertId}`);
+      const res = await fetch(`${SEAT_URL}/seats?concertId=${concertId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Queue-Token': activeToken,
+        },
+      });
       if (res.ok) {
         const json: ApiResponse<Seat[]> = await res.json();
         setSeats(json.data);
+        addLog('INFO', `공연 ID ${concertId} 실시간 좌석 ${json.data.length}석 로드 완료 (토큰 검증 통과)`, 'seat-service');
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        addLog('ERROR', `좌석 조회 실패 (${res.status}): ${errJson.message || '인증 오류'}`, 'seat-service');
       }
     } catch (e: any) {
-      addLog('ERROR', `좌석 조회 실패 (seat-service 8083 구동 확인 필요): ${e.message}`, 'seat-service');
+      addLog('ERROR', `좌석 조회 실패 (Port 8080 구동 확인 필요): ${e.message}`, 'seat-service');
     } finally {
       setIsLoadingSeats(false);
     }
   };
 
-  useEffect(() => {
-    if (selectedConcertId) {
-      fetchSeats(selectedConcertId);
-    }
-  }, [selectedConcertId]);
-
-  // 3. 대기열 진입 요청 (waiting-service: 8081)
+  // 3. 대기열 진입 요청 (POST /api/v2/queue/tokens)
   const handleEnterQueue = async () => {
     if (!selectedConcertId) return;
     const userId = 1001;
 
-    addLog('QUEUE', `대기열 진입 요청 (POST /api/v2/queue/tokens)`, 'queue-service');
+    addLog('QUEUE', `대기열 진입 요청 시작 (POST /api/v2/queue/tokens, concertId: ${selectedConcertId})`, 'queue-service');
     try {
       const res = await fetch(`${QUEUE_URL}/queue/tokens`, {
         method: 'POST',
@@ -123,8 +145,17 @@ export default function Home() {
       const json: ApiResponse<QueueTokenResponse> = await res.json();
       if (res.ok) {
         setQueueStatus(json.data);
-        setQueueToken(json.data.token);
-        addLog('QUEUE', `대기열 등록 완료 (내 순번: ${json.data.rank}번 / 총 ${json.data.totalWaiting}명)`, 'queue-service');
+        if (json.data.allowed) {
+          // 즉시 입장 허가된 경우
+          setQueueToken(json.data.token);
+          addLog('SUCCESS', `🎉 대기열 통과! 즉시 입장 허가 승인되었습니다.`, 'queue-service');
+          fetchSeats(selectedConcertId, json.data.token);
+          setTimeout(() => {
+            setQueueStatus(null);
+          }, 1200);
+        } else {
+          addLog('QUEUE', `대기열 등록 완료 (내 순번: ${json.data.rank}번 / 총 대기 ${json.data.totalWaiting}명)`, 'queue-service');
+        }
       } else {
         addLog('ERROR', `대기열 진입 실패: ${json.message}`, 'queue-service');
       }
@@ -133,23 +164,26 @@ export default function Home() {
     }
   };
 
-  // 4. 대기열 순번 폴링
+  // 4. 대기열 순번 폴링 (GET /api/v2/queue/status)
   useEffect(() => {
-    if (!queueStatus || queueStatus.allowed || !queueToken || !selectedConcertId) return;
+    if (!queueStatus || queueStatus.allowed || !selectedConcertId) return;
 
+    const currentToken = queueStatus.token;
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`${QUEUE_URL}/queue/status?concertId=${selectedConcertId}`, {
           headers: {
             'Content-Type': 'application/json',
-            'X-Queue-Token': queueToken,
+            'X-Queue-Token': currentToken,
           },
         });
         if (res.ok) {
           const json: ApiResponse<QueueTokenResponse> = await res.json();
           setQueueStatus(json.data);
           if (json.data.allowed) {
-            addLog('SUCCESS', `🎉 대기열 통과! 입장 허가 승인되었습니다.`, 'waiting-service');
+            setQueueToken(json.data.token);
+            addLog('SUCCESS', `🎉 대기열 통과! 입장 허가 승인되었습니다. 좌석 배치를 공개합니다.`, 'queue-service');
+            fetchSeats(selectedConcertId, json.data.token);
             setTimeout(() => {
               setQueueStatus(null); // 모달 닫기
             }, 1200);
@@ -159,22 +193,28 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [queueStatus, queueToken, selectedConcertId]);
+  }, [queueStatus, selectedConcertId]);
 
-  // 5. 좌석 임시 선점 (seat-service: 8083 - Redisson 분산 락)
+  // 5. 좌석 임시 선점 (Redisson 분산 락 + X-Queue-Token 검증)
   const handleReserveSeat = async () => {
-    if (!selectedSeat || !selectedConcertId) return;
+    if (!selectedSeat || !selectedConcertId || !queueToken) {
+      addLog('ERROR', '좌석 선택 및 대기열 토큰이 필요합니다.', 'seat-service');
+      return;
+    }
 
     setIsSubmitting(true);
     const startTime = performance.now();
     const userId = 1001;
 
-    addLog('INFO', `좌석 선점 시도: seatId=${selectedSeat.id} (${selectedSeat.seatNumber})`, 'seat-service');
+    addLog('INFO', `좌석 선점 시도: seatId=${selectedSeat.id} (${selectedSeat.seatNumber}), token=${queueToken.substring(0, 8)}...`, 'seat-service');
 
     try {
       const res = await fetch(`${SEAT_URL}/seats/reserve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Queue-Token': queueToken,
+        },
         body: JSON.stringify({
           userId,
           concertId: selectedConcertId,
@@ -188,10 +228,10 @@ export default function Home() {
       if (res.ok) {
         addLog('SUCCESS', `✅ 좌석 임시 선점 성공! (Kafka 'seat.reserved' 이벤트 자동 발행)`, 'seat-service', latency);
         setReservedSeatInfo(json.data);
-        fetchSeats(selectedConcertId);
+        fetchSeats(selectedConcertId, queueToken);
       } else {
         addLog('ERROR', `❌ 선점 실패 (${res.status}): ${json.message}`, 'seat-service', latency);
-        fetchSeats(selectedConcertId);
+        fetchSeats(selectedConcertId, queueToken);
       }
     } catch (e: any) {
       addLog('ERROR', `통신 오류: ${e.message}`, 'seat-service');
@@ -200,9 +240,9 @@ export default function Home() {
     }
   };
 
-  // 6. 결제 승인 요청 (payment-service: 8085)
+  // 6. 결제 승인 요청 (POST /api/v2/payments)
   const handleProcessPayment = async () => {
-    if (!reservedSeatInfo) return;
+    if (!reservedSeatInfo || !selectedConcertId) return;
 
     setIsSubmitting(true);
     const startTime = performance.now();
@@ -214,7 +254,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: 1, // 가주문 ID
+          orderId: 1, // 주문 식별자
           seatId: reservedSeatInfo.seatId,
           amount: reservedSeatInfo.price,
           paymentMethod: 'CARD',
@@ -228,7 +268,7 @@ export default function Home() {
         addLog('SUCCESS', `💳 결제 완료! PG 승인번호: ${json.data.pgTid} (Kafka 'payment.completed' 전파)`, 'payment-service', latency);
         setReservedSeatInfo(null);
         setSelectedSeat(null);
-        if (selectedConcertId) fetchSeats(selectedConcertId);
+        if (selectedConcertId && queueToken) fetchSeats(selectedConcertId, queueToken);
       } else {
         addLog('ERROR', `결제 실패: ${json.message}`, 'payment-service', latency);
       }
@@ -248,7 +288,7 @@ export default function Home() {
         addLog('SUCCESS', `공연 ID ${selectedConcertId} 좌석 상태가 초기화되었습니다.`, 'seat-service');
         setSelectedSeat(null);
         setReservedSeatInfo(null);
-        fetchSeats(selectedConcertId);
+        if (queueToken) fetchSeats(selectedConcertId, queueToken);
       }
     } catch (e: any) {
       addLog('ERROR', `리셋 실패: ${e.message}`, 'seat-service');
@@ -268,11 +308,11 @@ export default function Home() {
               Ticket Stream v2 🎫
             </h1>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800">
-              MSA + Kafka + Redis
+              MSA + Kafka + Redis Queue
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            대기열 큐(Redis ZSet) &rarr; 좌석 선점 &rarr; 결제 및 Kafka 이벤트 스트리밍
+            공연 선택 &rarr; 대기열 순번 대기(Redis ZSet) &rarr; 활성 토큰 발급 &rarr; 실시간 좌석 조회/선점(Redisson) &rarr; 결제 완료
           </p>
         </div>
 
@@ -290,7 +330,8 @@ export default function Home() {
           <ConcertCarousel
             concerts={concerts}
             selectedConcertId={selectedConcertId}
-            onSelectConcert={(id) => setSelectedConcertId(id)}
+            onSelectConcert={handleSelectConcert}
+            isLoading={isLoadingConcerts}
           />
 
           <StadiumSeatMap
@@ -300,6 +341,8 @@ export default function Home() {
             onSelectSeat={(seat) => setSelectedSeat(seat)}
             onResetSeats={handleResetSeats}
             isLoading={isLoadingSeats}
+            isQueuePassed={!!queueToken}
+            onEnterQueue={handleEnterQueue}
           />
         </div>
 
@@ -310,57 +353,80 @@ export default function Home() {
             <h2 className="text-sm font-semibold text-slate-200 mb-3 flex items-center justify-between">
               <span>⚡ 티켓 예매 콘솔</span>
               {queueToken ? (
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                  대기열 승인됨
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  대기열 승인 완료
                 </span>
               ) : (
-                <button
-                  onClick={handleEnterQueue}
-                  className="text-[10px] font-mono text-indigo-300 bg-indigo-950 hover:bg-indigo-900 px-2 py-0.5 rounded border border-indigo-700 transition"
-                >
-                  대기열 표 뽑기 (테스트)
-                </button>
+                <span className="text-[10px] font-mono text-amber-400 bg-amber-950 px-2 py-0.5 rounded border border-amber-800 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  대기열 미통과
+                </span>
               )}
             </h2>
 
-            {/* 선택 좌석 정보 */}
-            <div className="bg-slate-950 border border-slate-800/80 rounded p-3 text-xs mb-3 space-y-1.5 font-mono">
-              <div className="flex justify-between">
-                <span className="text-slate-400">선택 좌석:</span>
-                <span className="text-white font-bold">{selectedSeat ? selectedSeat.seatNumber : '좌석을 클릭하세요'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">티켓 금액:</span>
-                <span className="text-emerald-400 font-semibold">{selectedSeat ? `₩${selectedSeat.price.toLocaleString()}` : '-'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">선점 전략:</span>
-                <span className="text-cyan-400">Kafka 이벤트 스트리밍</span>
-              </div>
-            </div>
-
-            {/* 액션 버튼 */}
-            {!reservedSeatInfo ? (
-              <button
-                disabled={!selectedSeat || isSubmitting}
-                onClick={handleReserveSeat}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold rounded text-sm transition shadow-lg shadow-indigo-950"
-              >
-                {isSubmitting ? '좌석 선점 처리 중...' : '좌석 임시 선점하기 (POST /seats/reserve)'}
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <div className="p-2 bg-emerald-950/60 border border-emerald-700/60 rounded text-xs text-emerald-300 text-center font-mono">
-                  ⏱️ 좌석 선점 완료 (5분 내 결제 필요)
+            {/* 대기열 미통과 상태: 대기열 진입 유도 안내 */}
+            {!queueToken ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded text-xs text-indigo-300 space-y-1">
+                  <div className="font-semibold text-white flex items-center gap-1">
+                    <span>🔒</span> 예매 대기열 진입 필요
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    실제 티켓팅 시스템과 동일하게 대기열 번호표를 발급받고 순번에 도달해야 실시간 좌석 조회 및 선점이 가능합니다.
+                  </p>
                 </div>
                 <button
-                  disabled={isSubmitting}
-                  onClick={handleProcessPayment}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-sm transition shadow-lg shadow-emerald-950 animate-pulse"
+                  disabled={!selectedConcertId}
+                  onClick={handleEnterQueue}
+                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-bold rounded-lg text-sm transition shadow-lg shadow-indigo-950 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? '결제 승인 중...' : '신용카드 즉시 결제하기 (POST /payments)'}
+                  <span>🎟️</span>
+                  <span>{selectedConcertId ? '티켓 예매하기 (대기열 표 뽑기)' : '공연을 먼저 선택해주세요'}</span>
                 </button>
               </div>
+            ) : (
+              <>
+                {/* 선택 좌석 정보 */}
+                <div className="bg-slate-950 border border-slate-800/80 rounded p-3 text-xs mb-3 space-y-1.5 font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">선택 좌석:</span>
+                    <span className="text-white font-bold">{selectedSeat ? selectedSeat.seatNumber : '좌석을 클릭하세요'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">티켓 금액:</span>
+                    <span className="text-emerald-400 font-semibold">{selectedSeat ? `₩${selectedSeat.price.toLocaleString()}` : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">선점 전략:</span>
+                    <span className="text-cyan-400">Redisson 분산 락 + Kafka</span>
+                  </div>
+                </div>
+
+                {/* 액션 버튼 */}
+                {!reservedSeatInfo ? (
+                  <button
+                    disabled={!selectedSeat || isSubmitting}
+                    onClick={handleReserveSeat}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold rounded text-sm transition shadow-lg shadow-indigo-950 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? '좌석 선점 처리 중...' : '좌석 임시 선점하기 (POST /seats/reserve)'}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="p-2 bg-emerald-950/60 border border-emerald-700/60 rounded text-xs text-emerald-300 text-center font-mono">
+                      ⏱️ 좌석 선점 완료 (5분 내 결제 필요)
+                    </div>
+                    <button
+                      disabled={isSubmitting}
+                      onClick={handleProcessPayment}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-sm transition shadow-lg shadow-emerald-950 animate-pulse cursor-pointer"
+                    >
+                      {isSubmitting ? '결제 승인 중...' : '신용카드 즉시 결제하기 (POST /payments)'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

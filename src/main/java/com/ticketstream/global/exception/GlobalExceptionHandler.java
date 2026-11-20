@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(InvalidQueueTokenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidQueueToken(InvalidQueueTokenException e) {
+        log.warn("유효하지 않은 대기열 토큰 접근 차단 (403 Forbidden): {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(e.getMessage()));
+    }
+
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(OptimisticLockingFailureException e) {
         log.warn("동시 요청 충돌 발생 (낙관적 락 충돌): {}", e.getMessage());
